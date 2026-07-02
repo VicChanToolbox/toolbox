@@ -1,1 +1,2543 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProToolbox - 萬能本地高效工具箱 (6合1)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- JSZip Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- OpenCC 繁簡轉換核心 -->
+    <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+        }
+        /* 自訂美化滾動條 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* 拖曳動畫效果 */
+        .drag-active {
+            border-color: #4f46e5 !important;
+            background-color: #eef2ff !important;
+        }
+        /* Tab 切換淡入動畫 */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
+        /* 專屬列印隔離樣式 */
+        @media print {
+            body, html {
+                background-color: white !important;
+                color: black !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            @page { margin: 0; }
+            header, footer, #globalToast, .tab-btn {
+                display: none !important;
+            }
+            /* 隱藏其他所有非列印分頁內容 */
+            .tab-content {
+                display: none !important;
+            }
+            /* 僅顯示並滿版呈現列印小工具 */
+            .tab-content#content-print-helper {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                z-index: 9999;
+            }
+            #print-preview-container {
+                background: white !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+            #print-preview-image {
+                display: block !important;
+                width: 100vw !important;
+                max-height: 100vh !important;
+                object-fit: contain !important;
+                margin: 0 auto !important;
+            }
+            /* 隱藏印表機模式下的UI控制元件 */
+            .no-print, #action-buttons5, #placeholder5, #error-message5 {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- 全域頂部導航欄 -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- 標誌區 -->
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md shadow-indigo-100 flex items-center justify-center">
+                        <i class="fa-solid fa-toolbox text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-slate-900 leading-tight">ProToolbox</h1>
+                        <p class="text-xs text-slate-500">萬能本地高效工具箱 (6合1)</p>
+                    </div>
+                </div>
+                <!-- 狀態指示器 -->
+                <div class="hidden sm:flex items-center space-x-2 text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full border border-emerald-100">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>100% 瀏覽器本地安全運算・免上傳</span>
+                </div>
+            </div>
+            
+            <!-- 分頁切換選單 (適應行動端與桌面端) -->
+            <div class="flex space-x-1 overflow-x-auto pb-px scrollbar-none">
+                <button onclick="switchTab('jpg-resave')" id="tab-jpg-resave" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-regular fa-file-image"></i> JPG 壓縮優化
+                </button>
+                <button onclick="switchTab('capscreen')" id="tab-capscreen" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-clipboard-paste"></i> 剪貼快存助手
+                </button>
+                <button onclick="switchTab('print-helper')" id="tab-print-helper" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-print"></i> 截圖列印小工具
+                </button>
+                <button onclick="switchTab('cc-converter')" id="tab-cc-converter" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-language"></i> 智能繁簡轉換
+                </button>
+                <button onclick="switchTab('dup-finder')" id="tab-dup-finder" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-dumpster-fire"></i> 重複檔案清理
+                </button>
+                <button onclick="switchTab('bulk-rename')" id="tab-bulk-rename" class="tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-folder-input"></i> 批量檔案改名
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        <!-- ========================================== -->
+        <!-- TOOL 1: JPG 壓縮優化 (JpgResave) -->
+        <!-- ========================================== -->
+        <section id="content-jpg-resave" class="tab-content">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50">
+                    <h2 class="text-xl font-bold text-slate-900">JPG 重新儲存與壓縮工具</h2>
+                    <p class="text-slate-500 text-sm mt-1">細緻調整 JPG 品質，減少檔案體積並優化圖片，所有處理在本地 Canvas 沙盒內高速完成。</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- 控制列 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">壓縮品質 (Quality): <span id="qualityValue1" class="text-indigo-600 font-bold">80</span>%</label>
+                            <input type="range" id="qualityRange1" min="1" max="100" value="80" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                        <div class="flex items-end">
+                            <button id="downloadAllBtn1" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-down"></i> 下載所有已處理檔案
+                            </button>
+                        </div>
+                    </div>
+                    <!-- 上傳區 -->
+                    <div id="dropZone1" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 hover:bg-indigo-50/10 transition-all relative">
+                        <input type="file" id="fileInput1" multiple accept="image/jpeg,image/png,image/webp" class="hidden">
+                        <div class="bg-indigo-50 p-4 rounded-full mb-4 text-indigo-600">
+                            <i class="fa-solid fa-images text-3xl"></i>
+                        </div>
+                        <p class="text-slate-700 font-semibold text-base">點擊或拖放圖片至此</p>
+                        <p class="text-slate-400 text-xs mt-1">支援 JPG, PNG, WebP 格式（輸出為 JPG 格式）</p>
+                    </div>
+                    <!-- 預覽清單 -->
+                    <div id="previewList1" class="space-y-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TOOL 2: 剪貼快存助手 (CapScreen) -->
+        <!-- ========================================== -->
+        <section id="content-capscreen" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側：設定控制面板 -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-regular fa-circle-question text-indigo-600"></i> 使用說明
+                        </h3>
+                        <ol class="text-xs text-slate-600 space-y-2 list-decimal pl-4 leading-relaxed">
+                            <li>使用您電腦上的截圖快捷鍵（如 Win+Shift+S / Cmd+Shift+4）截取圖片。</li>
+                            <li>切換到本分頁，在網頁任意處直接按 <code class="px-1 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-semibold">Ctrl+V</code> (Mac 上為 <code class="px-1 py-0.5 bg-slate-100 border border-slate-300 rounded text-xs font-semibold">Cmd+V</code>) 貼上。</li>
+                            <li>您也可以點擊下方區域選擇檔案，或直接將圖片拖入。</li>
+                        </ol>
+                        <div id="dropzone2" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/30 rounded-xl p-5 text-center cursor-pointer transition-all relative">
+                            <input type="file" id="fileInput2" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <div class="space-y-1.5 text-slate-400">
+                                <i class="fa-solid fa-cloud-arrow-up text-3xl"></i>
+                                <p class="text-xs font-semibold text-slate-700">點擊上傳或拖曳圖片</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-sliders text-indigo-600"></i> 儲存與浮水印設定
+                        </h3>
+                        <!-- 格式選擇 -->
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">匯出格式</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="formatPng2" class="py-2 px-3 rounded-lg border-2 border-indigo-600 bg-indigo-50 text-indigo-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-600"></span> PNG
+                                </button>
+                                <button id="formatJpg2" class="py-2 px-3 rounded-lg border-2 border-slate-200 text-slate-600 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all">
+                                    <span class="w-2 h-2 rounded-full bg-transparent border border-slate-400"></span> JPEG
+                                </button>
+                            </div>
+                        </div>
+                        <!-- 品質調整 (僅限 JPG) -->
+                        <div id="qualitySection2" class="space-y-2 hidden opacity-0 transition-opacity duration-300">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-semibold text-slate-500">JPEG 品質</label>
+                                <span id="qualityVal2" class="text-xs font-bold text-indigo-600">90%</span>
+                            </div>
+                            <input type="range" id="qualityRange2" min="10" max="100" value="90" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                        </div>
+                        <!-- 檔名設定 -->
+                        <div class="space-y-2">
+                            <label for="fileName2" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">檔案名稱</label>
+                            <div class="relative">
+                                <input type="text" id="fileName2" value="screenshot" class="w-full pl-3 pr-16 py-1.5 border border-slate-200 rounded-lg text-sm focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                                <span id="fileExtHint2" class="absolute right-3 top-2 text-xs text-slate-400 font-semibold">.png</span>
+                            </div>
+                        </div>
+                        <!-- 簡易文字疊加 -->
+                        <div class="space-y-2 border-t border-slate-100 pt-3">
+                            <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">附加文字 (浮水印)</label>
+                            <input type="text" id="watermarkText2" placeholder="輸入要加上圖片的文字..." class="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none">
+                            <div class="flex gap-2">
+                                <input type="color" id="watermarkColor2" value="#ffffff" class="w-8 h-8 rounded border border-slate-200 cursor-pointer">
+                                <select id="watermarkPos2" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                                    <option value="bottom-right">右下角</option>
+                                    <option value="bottom-left">左下角</option>
+                                    <option value="top-right">右上角</option>
+                                    <option value="top-left">左上角</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：編輯與預覽區 -->
+                <div class="lg:col-span-2 flex flex-col space-y-4">
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden flex-1 min-h-[450px]">
+                        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div class="flex items-center space-x-2">
+                                <i class="fa-regular fa-image text-slate-500"></i>
+                                <span class="font-bold text-slate-700">工作區預覽</span>
+                            </div>
+                            <div id="imgInfo2" class="hidden text-xs text-slate-500 space-x-3">
+                                <span id="imgDimensions2" class="font-mono">0 x 0 px</span>
+                                <span id="imgSize2" class="bg-slate-200 px-2 py-0.5 rounded">0 KB</span>
+                            </div>
+                        </div>
+
+                        <!-- 畫布主體 -->
+                        <div class="flex-1 bg-slate-100 flex items-center justify-center p-6 relative min-h-[300px]" id="canvasContainer2">
+                            <!-- 預設提示 -->
+                            <div id="emptyState2" class="text-center space-y-3 p-8 max-w-sm pointer-events-none">
+                                <div class="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center mx-auto text-indigo-600 animate-bounce">
+                                    <i class="fa-solid fa-clipboard-paste text-2xl"></i>
+                                </div>
+                                <h3 class="text-base font-bold text-slate-800">等待圖片貼上...</h3>
+                                <p class="text-xs text-slate-500">點擊此處並按下 <code class="bg-white px-1.5 py-0.5 border border-slate-200 rounded font-bold text-indigo-600">Ctrl+V</code>，或直接拖曳圖片到本頁面。</p>
+                            </div>
+                            <canvas id="mainCanvas2" class="max-w-full max-h-[50vh] object-contain shadow-md rounded-lg hidden bg-white"></canvas>
+                        </div>
+
+                        <!-- 底部工具列 -->
+                        <div id="actionToolbar2" class="px-5 py-4 border-t border-slate-100 bg-slate-50/50 flex flex-wrap gap-3 items-center justify-between hidden">
+                            <div class="flex items-center space-x-2">
+                                <button id="btnRotate2" class="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-sm flex items-center gap-1.5 text-xs font-semibold">
+                                    <i class="fa-solid fa-rotate-right"></i> 旋轉 90°
+                                </button>
+                                <button id="btnFlip2" class="p-2 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-sm flex items-center gap-1.5 text-xs font-semibold">
+                                    <i class="fa-solid fa-arrows-left-right"></i> 水平翻轉
+                                </button>
+                                <button id="btnClear2" class="p-2 bg-white border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 shadow-sm flex items-center gap-1.5 text-xs font-semibold">
+                                    <i class="fa-regular fa-trash-can"></i> 清除
+                                </button>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="btnCopy2" class="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors shadow-sm flex items-center gap-2 text-xs font-bold">
+                                    <i class="fa-regular fa-copy"></i> 複製
+                                </button>
+                                <button id="btnDownload2" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2 text-xs font-bold">
+                                    <i class="fa-solid fa-download"></i> 儲存下載
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TOOL 5: 截圖列印小工具 (PrintHelper) -->
+        <!-- ========================================== -->
+        <section id="content-print-helper" class="tab-content">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50 no-print">
+                    <h2 class="text-xl font-bold text-slate-900">截圖列印小工具</h2>
+                    <p class="text-slate-500 text-sm mt-1">按下鍵盤的 Print Screen (PrtScn) 後，直接在此分頁內按下 Ctrl+V 貼上，快速預覽並呼叫本地印表機輸出。</p>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- 錯誤提示 -->
+                    <div id="error-message5" class="hidden p-4 bg-rose-50 border border-rose-100 text-rose-700 text-xs rounded-xl no-print flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span id="error-text5">剪貼簿中沒有找到圖片。</span>
+                    </div>
+
+                    <!-- 預覽畫布區域 -->
+                    <div id="print-preview-container" class="relative w-full min-h-[400px] bg-slate-950 flex items-center justify-center p-4 rounded-xl overflow-hidden border border-slate-800">
+                        <!-- 初始提示畫面 -->
+                        <div id="placeholder5" class="flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-700 p-12 rounded-xl w-full max-w-md no-print">
+                            <i class="fa-solid fa-print text-4xl mb-4 text-slate-600 animate-pulse"></i>
+                            <p class="text-base font-semibold mb-2 text-slate-300 text-center">
+                                請按下 <kbd class="bg-slate-800 px-2 py-1 rounded text-slate-200 shadow font-mono text-xs">Ctrl</kbd> + <kbd class="bg-slate-800 px-2 py-1 rounded text-slate-200 shadow font-mono text-xs">V</kbd> 貼上截圖
+                            </p>
+                            <p class="text-xs text-slate-500 text-center">貼上後即可在此呈現真實列印範圍預覽</p>
+                        </div>
+
+                        <!-- 實際圖片 -->
+                        <img id="print-preview-image" src="" alt="準備列印的截圖" class="hidden max-w-full max-h-[60vh] object-contain" />
+                    </div>
+
+                    <!-- 按鈕控制列 -->
+                    <div id="action-buttons5" class="hidden justify-center items-center gap-6 no-print bg-slate-50 p-4 rounded-xl border border-slate-150">
+                        <button onclick="clearImage5()" class="flex flex-col items-center gap-1.5 p-2 text-slate-500 hover:text-rose-600 transition-colors">
+                            <div class="w-12 h-12 bg-white border border-slate-200 hover:border-rose-200 hover:bg-rose-50/50 rounded-full flex items-center justify-center transition-all shadow-sm">
+                                <i class="fa-regular fa-trash-can text-lg"></i>
+                            </div>
+                            <span class="text-xs font-semibold">清除重貼</span>
+                        </button>
+
+                        <button onclick="saveAsJPG5()" class="flex flex-col items-center gap-1.5 p-2 text-indigo-600 hover:text-indigo-700 transition-colors">
+                            <div class="w-14 h-14 bg-indigo-600 hover:bg-indigo-700 rounded-full flex items-center justify-center text-white transition-all shadow-md shadow-indigo-100">
+                                <i class="fa-solid fa-download text-xl"></i>
+                            </div>
+                            <span class="text-xs font-bold">儲存 JPG</span>
+                        </button>
+                        
+                        <button onclick="window.print()" class="flex flex-col items-center gap-1.5 p-2 text-emerald-600 hover:text-emerald-700 transition-colors">
+                            <div class="w-14 h-14 bg-emerald-600 hover:bg-emerald-700 rounded-full flex items-center justify-center text-white transition-all shadow-md shadow-emerald-100">
+                                <i class="fa-solid fa-print text-xl"></i>
+                            </div>
+                            <span class="text-xs font-bold">直接列印</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TOOL 6: 智能繁簡轉換 (CCConverter) -->
+        <!-- ========================================== -->
+        <section id="content-cc-converter" class="tab-content">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-900">智能繁簡轉換</h2>
+                        <p class="text-slate-500 text-sm mt-1">直接在左側貼上文字，系統會自動判定簡繁特徵並即時互相對調，完全無需手動指定。</p>
+                    </div>
+                    <!-- 模式切換 -->
+                    <div class="flex bg-slate-150 p-1 rounded-xl text-xs font-semibold" id="mode-buttons6">
+                        <button data-mode="auto" class="mode-btn6 active flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all bg-white text-indigo-600 shadow-sm">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>自動偵測</span>
+                        </button>
+                        <button data-mode="to_tw" class="mode-btn6 flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800">
+                            <i class="fa-solid fa-font"></i>
+                            <span>轉繁體 (TW)</span>
+                        </button>
+                        <button data-mode="to_cn" class="mode-btn6 flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800">
+                            <i class="fa-solid fa-font"></i>
+                            <span>轉簡體 (CN)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 狀態指示 -->
+                <div class="px-6 py-2.5 bg-indigo-50/30 border-b border-slate-100 flex items-center justify-between text-xs">
+                    <span id="status-indicator6" class="text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-spinner animate-spin text-indigo-500"></i> 字庫載入中...
+                    </span>
+                    <button id="clear-btn6" disabled class="text-slate-400 hover:text-rose-600 disabled:opacity-45 disabled:cursor-not-allowed">
+                        <i class="fa-regular fa-trash-can"></i> 清除輸入
+                    </button>
+                </div>
+
+                <!-- 文字輸入對照區 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100 min-h-[380px]">
+                    <!-- 輸入來源 -->
+                    <div class="flex flex-col p-5 bg-white relative">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2"><i class="fa-regular fa-file-lines"></i> 來源文字 (貼上至此)</span>
+                        <textarea id="input-area6" placeholder="請在此輸入或貼上文字..." class="w-full flex-grow text-sm leading-relaxed text-slate-700 bg-transparent border-none resize-none focus:ring-0 focus:outline-none min-h-[250px]"></textarea>
+                    </div>
+                    <!-- 輸出結果 -->
+                    <div class="flex flex-col p-5 bg-slate-50/30 relative">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2"><i class="fa-regular fa-circle-check"></i> 智能轉換結果</span>
+                        <textarea id="output-area6" readonly placeholder="轉換結果會在此即時呈現..." class="w-full flex-grow text-sm leading-relaxed text-slate-800 bg-transparent border-none resize-none focus:ring-0 focus:outline-none min-h-[250px]"></textarea>
+                        
+                        <!-- 複製按鈕 -->
+                        <div class="absolute bottom-5 right-5">
+                          <button id="copy-btn6" disabled class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold shadow-sm transition-all duration-200 text-xs bg-slate-200 text-slate-400 cursor-not-allowed">
+                            <i class="fa-regular fa-copy"></i>
+                            <span id="copy-text6">複製結果</span>
+                          </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TOOL 3: 重複檔案清理 (DupCleaner) -->
+        <!-- ========================================== -->
+        <section id="content-dup-finder" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側控制面板 -->
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-sliders text-indigo-600"></i> 1. 選擇本機目錄/檔案
+                            </h3>
+                            <button id="btnHelp3" class="text-slate-400 hover:text-slate-600 text-xs flex items-center gap-0.5">
+                                <i class="fa-regular fa-circle-question text-sm"></i> 使用說明
+                            </button>
+                        </div>
+
+                        <!-- 檔案/資料夾拖放與授權 -->
+                        <div id="dropZone3" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/30 rounded-xl p-5 text-center cursor-pointer transition-all duration-200 relative group">
+                            <input type="file" id="fileInput3" multiple class="hidden">
+                            <i class="fa-solid fa-folder-open text-3xl text-slate-400 group-hover:text-indigo-500 mb-2 block"></i>
+                            <p class="text-xs font-semibold text-slate-700 mb-1">拖曳檔案至此或選擇模式</p>
+                            
+                            <div class="mt-4 flex flex-col gap-2">
+                                <!-- 優先：File System Access API -->
+                                <button id="btnDirectFolder3" class="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-folder-tree"></i> 選擇本機資料夾 (支援直接刪除)
+                                </button>
+                                <div class="flex items-center my-1">
+                                    <div class="flex-grow border-t border-slate-200"></div>
+                                    <span class="mx-2 text-[9px] text-slate-400 font-bold uppercase">或傳統唯讀模式</span>
+                                    <div class="flex-grow border-t border-slate-200"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button id="btnSelectFolder3" class="px-2 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 text-[10px] font-semibold rounded-lg text-slate-700 shadow-sm transition-all">
+                                        唯讀資料夾
+                                    </button>
+                                    <button id="btnSelectFiles3" class="px-2 py-1.5 bg-white border border-slate-200 hover:border-indigo-500 hover:text-indigo-600 text-[10px] font-semibold rounded-lg text-slate-700 shadow-sm transition-all">
+                                        唯讀多檔案
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 比對設定與過濾器 -->
+                        <div class="mt-5 space-y-4">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">比對準則</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="relative flex flex-col p-2.5 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all [&:has(input:checked)]:border-indigo-500 [&:has(input:checked)]:bg-indigo-50/10">
+                                    <input type="radio" name="compareMode3" value="fast" checked class="sr-only">
+                                    <span class="text-xs font-bold text-slate-900 flex items-center gap-1">
+                                        <i class="fa-solid fa-bolt text-amber-500"></i> 快速比對
+                                    </span>
+                                    <span class="text-[9px] text-slate-400 mt-1 leading-tight">依 檔名+大小 比對，極速完成</span>
+                                </label>
+                                <label class="relative flex flex-col p-2.5 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-all [&:has(input:checked)]:border-indigo-500 [&:has(input:checked)]:bg-indigo-50/10">
+                                    <input type="radio" name="compareMode3" value="hash" class="sr-only">
+                                    <span class="text-xs font-bold text-slate-900 flex items-center gap-1">
+                                        <i class="fa-solid fa-shield-halved text-indigo-600"></i> 雜湊比對
+                                    </span>
+                                    <span class="text-[9px] text-slate-400 mt-1 leading-tight">計算 SHA-256，檔名不同亦可尋</span>
+                                </label>
+                            </div>
+
+                            <!-- 進階過濾 -->
+                            <div>
+                                <button id="btnToggleFilters3" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                                    <i class="fa-solid fa-filter"></i> 進階檔案過濾設定
+                                </button>
+                                <div id="filterPanel3" class="hidden mt-2.5 space-y-2.5 p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs">
+                                    <div>
+                                        <label class="block text-slate-500 mb-1">最小檔案大小限制</label>
+                                        <select id="minSizeFilter3" class="w-full bg-white border border-slate-200 rounded-lg p-1.5 focus:outline-none">
+                                            <option value="0">無限制</option>
+                                            <option value="10240">10 KB</option>
+                                            <option value="1048576">1 MB</option>
+                                            <option value="10485760">10 MB</option>
+                                            <option value="104857600">100 MB</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-slate-500 mb-1">副檔名限制 (逗號分隔)</label>
+                                        <input type="text" id="extFilter3" placeholder="例如: png, mp4, pdf" class="w-full bg-white border border-slate-200 rounded-lg p-1.5 focus:outline-none">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="btnStartScan3" disabled class="w-full mt-2 py-2.5 px-4 bg-slate-300 text-white font-bold rounded-lg shadow-sm cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm">
+                                <i class="fa-solid fa-magnifying-glass"></i> 開始比對分析
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 空間統計 Dashboard -->
+                    <div id="statsCard3" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hidden">
+                        <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-indigo-600"></i> 重重複空間佔用統計
+                        </h3>
+                        <div class="h-40 flex items-center justify-center mb-4">
+                            <canvas id="statsChart3"></canvas>
+                        </div>
+                        <div class="space-y-2.5 border-t border-slate-100 pt-3 text-xs">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-500 flex items-center gap-1.5"><span class="w-2 h-2 bg-rose-500 rounded-full"></span>可省空間:</span>
+                                <span id="statWasteSize3" class="font-bold text-rose-600 text-sm">0 B</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-500 flex items-center gap-1.5"><span class="w-2 h-2 bg-indigo-500 rounded-full"></span>重複群組數:</span>
+                                <span id="statGroups3" class="font-bold text-slate-800">0 組</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-500 flex items-center gap-1.5"><span class="w-2 h-2 bg-slate-300 rounded-full"></span>掃描總數:</span>
+                                <span id="statTotalFiles3" class="font-bold text-slate-800">0 個</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側主工作區 -->
+                <div class="lg:col-span-2 flex flex-col gap-6">
+                    <!-- 進度追蹤器 -->
+                    <div id="progressCard3" class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hidden">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-spinner animate-spin text-indigo-600"></i>
+                                <span id="progressTitle3" class="text-sm font-bold text-slate-700">準備分析檔案結構...</span>
+                            </div>
+                            <span id="progressPercent3" class="text-sm font-bold text-indigo-600">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5">
+                            <div id="progressBar3" class="bg-indigo-600 h-1.5 rounded-full transition-all duration-150" style="width: 0%"></div>
+                        </div>
+                        <p id="progressDetail3" class="text-[11px] text-slate-400 mt-1.5 truncate">Waiting...</p>
+                    </div>
+
+                    <!-- 比對結果列表容器 -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex-grow flex flex-col min-h-[480px] overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-slate-50/50">
+                            <div>
+                                <h3 class="font-bold text-slate-900 flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-indigo-600"></i> 重複檔案詳細清單
+                                </h3>
+                                <p class="text-[11px] text-slate-400 mt-0.5">勾選需要「從本機刪除」或「打包排除」的檔案，系統已智慧為您每群組推薦保留一個最優檔。</p>
+                            </div>
+
+                            <!-- 快速與智慧操作按鈕 -->
+                            <div id="actionToolbar3" class="flex flex-wrap items-center gap-2 hidden">
+                                <div class="relative inline-block text-left">
+                                    <button id="btnSmartSelect3" class="inline-flex items-center px-3 py-1.5 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 bg-white hover:bg-slate-50 shadow-sm gap-1">
+                                        <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> 智慧選取 <i class="fa-solid fa-chevron-down text-[9px]"></i>
+                                    </button>
+                                    <div id="smartSelectMenu3" class="hidden absolute right-0 mt-2 w-44 rounded-lg shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20 py-1 text-xs">
+                                        <button data-select="newest" class="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-100 flex items-center gap-1.5">
+                                            <i class="fa-regular fa-clock text-indigo-500"></i> 保留最新 (勾選舊檔)
+                                        </button>
+                                        <button data-select="oldest" class="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-100 flex items-center gap-1.5">
+                                            <i class="fa-regular fa-clock text-slate-500"></i> 保留最舊 (勾選新檔)
+                                        </button>
+                                        <button data-select="all-but-one" class="w-full text-left px-4 py-2 text-slate-700 hover:bg-slate-100 flex items-center gap-1.5">
+                                            <i class="fa-regular fa-square-check text-indigo-500"></i> 每組均留一刪一
+                                        </button>
+                                        <hr class="my-1 border-slate-100">
+                                        <button data-select="clear" class="w-full text-left px-4 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-1.5">
+                                            <i class="fa-regular fa-square text-rose-500"></i> 取消所有選取
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <button id="btnActionExecute3" class="inline-flex items-center px-3.5 py-1.5 border border-transparent text-xs font-bold rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-sm gap-1.5 transition-all">
+                                    <i id="actionBtnIcon3" class="fa-solid fa-trash-can"></i> <span id="actionBtnText3">一鍵刪除已選</span> (<span id="selectedCount3">0</span>)
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 空白提示 -->
+                        <div id="emptyState3" class="flex-grow flex flex-col items-center justify-center p-10 text-center">
+                            <div class="w-16 h-16 bg-slate-50 text-slate-300 rounded-full flex items-center justify-center mb-3 border border-slate-100">
+                                <i class="fa-regular fa-clone text-2xl"></i>
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-800 mb-1">尚未匯入或分析檔案</h4>
+                            <p class="text-xs text-slate-400 max-w-sm mb-4">請使用左側選擇資料夾。如果您使用的是相容資料夾模式，我們支援一鍵快速永久清理本機磁碟！</p>
+                        </div>
+
+                        <!-- 重複卡片清單區 -->
+                        <div id="resultsContainer3" class="hidden flex-grow overflow-y-auto p-4 space-y-4 max-h-[480px]"></div>
+
+                        <!-- 狀態說明欄 -->
+                        <div id="resultsFooter3" class="hidden p-3.5 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-400">
+                            <div id="footerNotice3">已智慧勾選其餘重複，隨時準備進行本地清理。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TOOL 4: 批量檔案改名 (BulkRename) -->
+        <!-- ========================================== -->
+        <section id="content-bulk-rename" class="tab-content">
+            <!-- 瀏覽器相容警示 -->
+            <div id="api-warning4" class="hidden mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm">
+                <div class="flex">
+                    <div class="flex-shrink-0 text-amber-500"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="ml-3">
+                        <p class="text-xs text-amber-700 font-bold">本機直改相容性提示</p>
+                        <p class="text-[11px] text-amber-600 mt-1">您目前的瀏覽器未授權或不支援直接修改本機目錄檔案，系統已自動啟用「拖曳多檔案改名並打包下載 (.zip)」模式。推薦使用 Chrome/Edge 取得完美的本機資料夾直接命名功能！</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 左側：改名設定與規則 -->
+                <div class="lg:col-span-1 flex flex-col gap-6">
+                    <!-- 資料夾載入區 -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-900 mb-3 flex items-center gap-1.5">
+                            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">1</span>
+                            載入待改名檔案
+                        </h3>
+                        <div class="space-y-3">
+                            <!-- 模式切換 -->
+                            <div class="grid grid-cols-2 gap-1 p-1 bg-slate-100 rounded-lg text-xs font-semibold">
+                                <button id="btn-mode-direct4" class="py-1.5 px-2 rounded-md text-center bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-1">
+                                    <i class="fa-solid fa-folder-open text-[10px]"></i> 直接修改目錄
+                                </button>
+                                <button id="btn-mode-zip4" class="py-1.5 px-2 rounded-md text-center text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1">
+                                    <i class="fa-regular fa-file-zip text-[10px]"></i> 唯讀打包
+                                </button>
+                            </div>
+
+                            <!-- 直接改名面板 -->
+                            <div id="mode-direct-panel4" class="space-y-3">
+                                <p class="text-[11px] text-slate-500 leading-relaxed">選擇本機資料夾後，可以直接對此目錄下的所有檔案進行「檔名直接變更修改」操作。</p>
+                                <button id="btnSelectDir4" class="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex flex-col items-center justify-center gap-1 shadow-sm border border-indigo-500">
+                                    <i class="fa-solid fa-folder-plus text-xl mb-1"></i>
+                                    <span>選擇本機資料夾進行改名</span>
+                                </button>
+                                <div id="selected-dir-info4" class="hidden p-2.5 bg-indigo-50 border border-indigo-100 rounded-lg text-xs text-indigo-800 flex items-center justify-between">
+                                    <span id="selected-dir-name4" class="font-semibold truncate">未選擇</span>
+                                    <button id="btnClearDir4" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+                                </div>
+                            </div>
+
+                            <!-- 拖曳打包改名面板 -->
+                            <div id="mode-zip-panel4" class="hidden space-y-3">
+                                <p class="text-[11px] text-slate-500">將多個檔案拖放到下方，完成命名設定後，一鍵打包全新的 ZIP 壓縮檔下載。</p>
+                                <div id="drop-zone4" class="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-6 text-center cursor-pointer bg-slate-50/50 hover:bg-indigo-50/10 transition-all">
+                                    <input type="file" id="file-input4" multiple class="hidden">
+                                    <label for="file-input4" class="cursor-pointer flex flex-col items-center justify-center gap-1.5">
+                                        <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400"></i>
+                                        <span class="text-xs font-semibold text-slate-700">拖放或點擊此處瀏覽多個檔案</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 改名規則面板 -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center gap-1.5">
+                            <span class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">2</span>
+                            配置重新命名規則
+                        </h3>
+
+                        <!-- 規則一：尋找與取代 -->
+                        <div class="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-2.5">
+                            <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="rule-replace-enable4" class="rounded border-slate-300 text-indigo-600 h-4 w-4">
+                                啟用：尋找與取代
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">尋找字串</span>
+                                    <input type="text" id="rule-replace-find4" placeholder="例如: IMG_" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">取代為</span>
+                                    <input type="text" id="rule-replace-with4" placeholder="例如: 旅遊_" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 規則二：字首與字尾 -->
+                        <div class="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-2.5">
+                            <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="rule-affix-enable4" class="rounded border-slate-300 text-indigo-600 h-4 w-4">
+                                啟用：新增字首或字尾
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">加在最前面 (字首)</span>
+                                    <input type="text" id="rule-prefix4" placeholder="Prefix" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">加在最後面 (字尾)</span>
+                                    <input type="text" id="rule-suffix4" placeholder="Suffix" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 規則三：全新命名 + 流水號 -->
+                        <div class="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-2.5">
+                            <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="rule-sequence-enable4" class="rounded border-slate-300 text-indigo-600 h-4 w-4">
+                                啟用：全新檔案名 + 流水號
+                            </label>
+                            <div id="sequence-inputs4" class="space-y-2.5 text-xs opacity-40 pointer-events-none transition-all">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">全置換主名稱</span>
+                                    <input type="text" id="rule-seq-base4" placeholder="例如: Photo" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block mb-1">編號位數</span>
+                                        <select id="rule-seq-digits4" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none">
+                                            <option value="1">1 (1, 2, 3)</option>
+                                            <option value="2" selected>2 (01, 02, 03)</option>
+                                            <option value="3">3 (001, 002, 003)</option>
+                                            <option value="4">4 (0001, 0002, 0003)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-slate-400 block mb-1">起始流水號</span>
+                                        <input type="number" id="rule-seq-start4" value="1" min="0" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 規則四：大小寫副檔名轉換 -->
+                        <div class="border border-slate-100 rounded-xl p-3.5 bg-slate-50/50 space-y-2.5">
+                            <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                                <input type="checkbox" id="rule-case-enable4" class="rounded border-slate-300 text-indigo-600 h-4 w-4">
+                                啟用：大小寫與副檔名轉換
+                            </label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">英文大小寫轉換</span>
+                                    <select id="rule-case-type4" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg bg-white focus:outline-none">
+                                        <option value="none">保持原樣</option>
+                                        <option value="lower">全部小寫 (lower)</option>
+                                        <option value="upper">全部大寫 (UPPER)</option>
+                                        <option value="capitalize">字首大寫 (Capitalize)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <span class="text-[10px] text-slate-400 block mb-1">強制改副檔名</span>
+                                    <input type="text" id="rule-ext-change4" placeholder="如: png (留空不變)" class="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右側：改名前後預覽與執行 -->
+                <div class="lg:col-span-2 flex flex-col gap-6">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col flex-1 min-h-[450px]">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                <span class="flex items-center justify-center w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold">3</span>
+                                重新命名即時預覽
+                            </h3>
+                            <div class="text-xs text-slate-500">
+                                載入總數: <span id="file-count-badge4" class="font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">0 個</span>
+                            </div>
+                        </div>
+
+                        <!-- 預覽對比框 -->
+                        <div class="flex-1 border border-slate-100 rounded-xl overflow-hidden flex flex-col bg-slate-50/30">
+                            <!-- 預覽表頭 -->
+                            <div class="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-100 border-b border-slate-200 text-xs font-bold text-slate-600">
+                                <div class="col-span-1">#</div>
+                                <div class="col-span-5 truncate">原始檔案名稱</div>
+                                <div class="col-span-1 flex justify-center"><i class="fa-solid fa-angles-right"></i></div>
+                                <div class="col-span-5 truncate text-indigo-600">預期新檔名</div>
+                            </div>
+
+                            <!-- 空白狀態 -->
+                            <div id="preview-empty-state4" class="flex-grow flex flex-col items-center justify-center p-10 text-center">
+                                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-3">
+                                    <i class="fa-solid fa-folder-open text-xl"></i>
+                                </div>
+                                <p class="text-xs font-bold text-slate-700">尚未載入改名檔案</p>
+                                <p class="text-[11px] text-slate-400 mt-0.5">請利用左側面板匯入目錄或拖曳匯入多檔案。</p>
+                            </div>
+
+                            <!-- 改名滾動對照區 -->
+                            <div id="preview-list4" class="hidden flex-grow overflow-y-auto max-h-[360px] divide-y divide-slate-100"></div>
+                        </div>
+
+                        <!-- 操作與本地日誌欄 -->
+                        <div class="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                            <span class="text-[10px] text-slate-400"><i class="fa-solid fa-shield"></i> 所有命名行為均在您個人端電腦安全加密隔離進行，零風險。</span>
+                            <div class="flex gap-2 w-full sm:w-auto">
+                                <button id="btnClearAll4" class="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-semibold text-xs rounded-lg transition-all">清空列表</button>
+                                <button id="btn-execute4" disabled class="flex-1 sm:flex-initial px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-200 disabled:cursor-not-allowed text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5">
+                                    <i class="fa-solid fa-play"></i> <span id="btn-execute-text4">開始批量改名</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作日誌日誌終端 -->
+                    <div id="log-panel4" class="hidden bg-slate-900 text-slate-200 p-4 rounded-xl font-mono text-[11px] border border-slate-800">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+                            <span class="text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-terminal"></i> 批量改名處理日誌終端</span>
+                            <button id="btnCloseLog4" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                        <div id="log-output4" class="space-y-1 max-h-[120px] overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 全域通用頁尾 -->
+    <footer class="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-400 no-print">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>© 2026 ProToolbox 本地萬能高效工具箱. 遵守完全沙盒化標準，所有檔案與運算都在您的本地瀏覽器安全完成。</p>
+        </div>
+    </footer>
+
+    <!-- 全域共用 Toast 通知彈出框 -->
+    <div id="globalToast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-5 py-2.5 rounded-full text-xs shadow-xl opacity-0 pointer-events-none transition-all duration-300 z-50 flex items-center gap-2">
+        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="globalToastMsg">訊息提示</span>
+    </div>
+
+    <!-- DupCleaner Q&A 使用說明 Modal -->
+    <div id="helpModal3" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 no-print">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 m-4 text-xs">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-indigo-600"></i> 重複清理運作原理與說明
+                </h3>
+                <button onclick="closeModal(document.getElementById('helpModal3'))" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div class="space-y-4 text-slate-600 leading-relaxed">
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-1">Q1. 重複檔案可以直接在本機刪除嗎？</h4>
+                    <p><strong>可以！</strong> 本軟體深度整合了現代瀏覽器的 <strong>File System Access API</strong>。當您點擊「選擇本機資料夾 (支援直接刪除)」並取得單次授權後，即可在此網頁中不下載任何外部軟體，直接進行硬碟上的實體重複檔案清除。</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-1">Q2. 如果不小心選成唯讀/拖曳模式怎麼清理？</h4>
+                    <p>若您使用的是傳統唯讀模式，在勾選完成後點選「展開清理方案」，我們提供您：<strong>方案 A 打包唯一的保留檔案 (Zip)</strong> 或 <strong>方案 B 產生一鍵刪除批次指令檔 (Windows CMD / macOS Bash)</strong> 讓您在本機終端機快速執行。</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-1">Q3. 「快速比對」和「雜湊比對」有何區別？</h4>
+                    <p>快速比對採用「檔案名稱 + 檔案大小」的比對策略，速度極快；雜湊比對使用 <strong>SHA-256 數位指紋特徵碼</strong>，即使檔名不同、只要內容相同就能完美抓出！</p>
+                </div>
+            </div>
+            <div class="mt-6 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal(document.getElementById('helpModal3'))" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm">
+                    我明白了
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DupCleaner 檔案預覽 Modal -->
+    <div id="previewModal3" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 no-print">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-5 shadow-xl border border-slate-100 m-4 flex flex-col max-h-[80vh] text-xs">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="previewTitle3" class="text-xs font-bold text-slate-900 truncate pr-6">檔案預覽</h3>
+                <button onclick="closeModal(document.getElementById('previewModal3'))" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <div id="previewContent3" class="flex-grow flex items-center justify-center overflow-auto bg-slate-50 rounded-lg border border-slate-200 p-3 min-h-[250px]"></div>
+            <div class="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-xs text-slate-500">
+                <span id="previewMeta3">大小: - | 類型: -</span>
+                <button onclick="closeModal(document.getElementById('previewModal3'))" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DupCleaner 本機直接刪除確認視窗 -->
+    <div id="directDeleteConfirmModal3" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 no-print">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl border border-slate-100 m-4 text-xs">
+            <div class="flex items-center gap-3 text-rose-600 mb-3">
+                <div class="p-2.5 bg-rose-50 rounded-lg text-lg"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div>
+                    <h3 class="font-bold text-slate-900">確認要直接從硬碟刪除？</h3>
+                    <p class="text-[10px] text-slate-400">此項操作為永久硬碟刪除，且無法從回收筒還原。</p>
+                </div>
+            </div>
+            <p class="text-slate-600 mb-4 leading-relaxed">
+                您即將直接從本機電腦硬碟中永久刪除 <strong id="directDeleteCount3" class="text-rose-600 font-bold text-sm">0</strong> 個重複檔案，請再次確認您的選取。
+            </p>
+            <div class="flex justify-end gap-2.5">
+                <button onclick="closeModal(document.getElementById('directDeleteConfirmModal3'))" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg">取消</button>
+                <button id="btnConfirmDirectDelete3" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg shadow-sm transition-all">確定永久刪除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DupCleaner 傳統降級清理方案 Modal -->
+    <div id="cleanupModal3" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300 no-print">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-xl border border-slate-100 m-4 text-xs">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-600"></i> 唯讀模式：重複檔案清理方案匯出
+                </h3>
+                <button onclick="closeModal(document.getElementById('cleanupModal3'))" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-sm"></i></button>
+            </div>
+            <p class="text-slate-500 mb-4">由於您是使用唯讀權限或多檔上傳，您可以選擇下方方案：</p>
+            <div class="space-y-3">
+                <!-- 方案 A -->
+                <div class="p-3.5 border border-slate-200 rounded-xl hover:border-indigo-500 transition-all bg-slate-50/40 flex items-start gap-3">
+                    <div class="bg-indigo-50 p-2 rounded-lg text-indigo-600"><i class="fa-solid fa-file-zipper text-sm"></i></div>
+                    <div class="flex-grow">
+                        <h4 class="font-bold text-slate-800">方案 A：打包保留唯一的優化檔案</h4>
+                        <p class="text-[10px] text-slate-400 mt-0.5">將所有未被勾選的「優化唯一保留檔」直接打包成 Zip 下載。完成後，您即可放心地將原資料夾整包清空。</p>
+                        <button id="btnDownloadZip3" class="mt-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-sm transition-all">開始打包 (Zip)</button>
+                    </div>
+                </div>
+                <!-- 方案 B -->
+                <div class="p-3.5 border border-slate-200 rounded-xl hover:border-indigo-500 transition-all bg-slate-50/40 flex items-start gap-3">
+                    <div class="bg-emerald-50 p-2 rounded-lg text-emerald-600"><i class="fa-solid fa-terminal text-sm"></i></div>
+                    <div class="flex-grow">
+                        <h4 class="font-bold text-slate-800">方案 B：產生一鍵批次刪除指令（本機快速執行）</h4>
+                        <p class="text-[10px] text-slate-400 mt-0.5">直接產生指令腳本，在本機對應資料夾目錄下貼上執行，即可實現批量實體清理。</p>
+                        <div class="mt-2.5 flex gap-2">
+                            <button id="btnGenCmdWin3" class="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 rounded-lg shadow-sm text-[10px] font-semibold"><i class="fa-brands fa-windows"></i> Windows 批次檔 (.bat)</button>
+                            <button id="btnGenCmdMac3" class="px-2.5 py-1 bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 rounded-lg shadow-sm text-[10px] font-semibold"><i class="fa-brands fa-apple"></i> macOS/Linux Shell (.sh)</button>
+                        </div>
+                        <div id="scriptContainer3" class="hidden mt-3 space-y-1">
+                            <div class="flex justify-between items-center text-[9px] text-slate-400">
+                                <span>在目錄終端機（CMD / Terminal）中執行：</span>
+                                <button id="btnCopyScript3" class="text-indigo-600 font-bold hover:underline">複製指令</button>
+                            </div>
+                            <textarea id="txtScriptArea3" readonly class="w-full h-20 bg-slate-900 text-emerald-400 font-mono text-[10px] p-2 rounded-lg border border-slate-800 resize-none focus:outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-5 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal(document.getElementById('cleanupModal3'))" class="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- JAVASCRIPT GLOBAL LOGIC -->
+    <!-- ========================================== -->
+    <script>
+        // --- 1. 全域分頁與初始化 ---
+        let currentTab = 'jpg-resave';
+
+        function switchTab(tabId) {
+            currentTab = tabId;
+            // 更新分頁按鈕視覺
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-3 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-indigo-600 hover:border-slate-200 whitespace-nowrap flex items-center gap-2 transition-all";
+            });
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "tab-btn px-4 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600 whitespace-nowrap flex items-center gap-2 transition-all";
+            }
+
+            // 更新內容面板顯示
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            const activeContent = document.getElementById(`content-${tabId}`);
+            if (activeContent) {
+                activeContent.classList.add('active');
+            }
+
+            // 重新初始化 Lucide 圖標
+            lucide.createIcons();
+        }
+
+        // 頁面加載完成時初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            switchTab('jpg-resave');
+            initJpgResave();
+            initCapScreen();
+            initPrintHelper();
+            initCCConverter();
+            initDupCleaner();
+            initBulkRename();
+        });
+
+        // 通用 Toast 提示
+        function showGlobalToast(msg, isSuccess = true) {
+            const toast = document.getElementById('globalToast');
+            const toastMsg = document.getElementById('globalToastMsg');
+            const toastIcon = toast.querySelector('i');
+            
+            toastMsg.textContent = msg;
+            if (isSuccess) {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-500";
+            }
+            
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // 通用 Modal 關閉 / 開啟
+        function openModal(modal) {
+            modal.classList.remove('pointer-events-none');
+            modal.classList.add('opacity-100');
+        }
+        function closeModal(modal) {
+            modal.classList.add('pointer-events-none');
+            modal.classList.remove('opacity-100');
+        }
+
+        // 檔案大小格式化
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+
+        // ==========================================
+        // TOOL 1 LOGIC: JPG 壓縮優化
+        // ==========================================
+        let filesArray1 = [];
+
+        function initJpgResave() {
+            const dropZone1 = document.getElementById('dropZone1');
+            const fileInput1 = document.getElementById('fileInput1');
+            const qualityRange1 = document.getElementById('qualityRange1');
+            const qualityValue1 = document.getElementById('qualityValue1');
+            const downloadAllBtn1 = document.getElementById('downloadAllBtn1');
+
+            qualityRange1.addEventListener('input', (e) => {
+                qualityValue1.textContent = e.target.value;
+                if (filesArray1.length > 0) {
+                    processAllFiles1();
+                }
+            });
+
+            dropZone1.addEventListener('click', () => fileInput1.click());
+            dropZone1.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone1.classList.add('drag-active');
+            });
+            dropZone1.addEventListener('dragleave', () => dropZone1.classList.remove('drag-active'));
+            dropZone1.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone1.classList.remove('drag-active');
+                handleFiles1(e.dataTransfer.files);
+            });
+
+            fileInput1.addEventListener('change', (e) => {
+                handleFiles1(e.target.files);
+            });
+
+            function handleFiles1(files) {
+                const newFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+                if (newFiles.length === 0) return;
+
+                filesArray1 = [...filesArray1, ...newFiles];
+                processAllFiles1();
+                downloadAllBtn1.classList.remove('hidden');
+            }
+
+            downloadAllBtn1.addEventListener('click', () => {
+                const items = document.querySelectorAll('#previewList1 button[onclick^="downloadSingle1"]');
+                items.forEach((btn, idx) => {
+                    setTimeout(() => {
+                        btn.click();
+                    }, idx * 300);
+                });
+                showGlobalToast('已開始批次優化下載...');
+            });
+        }
+
+        async function processAllFiles1() {
+            const previewList1 = document.getElementById('previewList1');
+            const qualityRange1 = document.getElementById('qualityRange1');
+            previewList1.innerHTML = '';
+            const quality = parseInt(qualityRange1.value) / 100;
+
+            for (let i = 0; i < filesArray1.length; i++) {
+                const file = filesArray1[i];
+                await processImage1(file, quality, i);
+            }
+        }
+
+        function processImage1(file, quality, index) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        ctx.fillStyle = "#FFFFFF";
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+
+                        const originalSize = file.size;
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        
+                        const head = 'data:image/jpeg;base64,'.length;
+                        const newSize = Math.round((dataUrl.length - head) * 3 / 4);
+
+                        createPreviewUI1(file.name, dataUrl, originalSize, newSize, index);
+                        resolve();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function createPreviewUI1(name, newSrc, oldSize, newSize, index) {
+            const ratio = ((1 - newSize / oldSize) * 100).toFixed(1);
+            const item = document.createElement('div');
+            item.className = "flex flex-col md:flex-row items-center gap-4 p-4 border border-slate-150 rounded-xl bg-white hover:shadow-md transition-all text-xs";
+            
+            item.innerHTML = `
+                <div class="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <img src="${newSrc}" class="w-full h-full object-cover">
+                </div>
+                <div class="flex-grow min-w-0">
+                    <h4 class="font-bold text-slate-800 truncate text-sm">${name}</h4>
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-slate-500 font-medium">
+                        <span>原始大小: ${formatBytes(oldSize)}</span>
+                        <span class="text-indigo-600 font-semibold">壓縮後: ${formatBytes(newSize)}</span>
+                        <span class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">減少 ${ratio}%</span>
+                    </div>
+                </div>
+                <div class="flex gap-2 w-full md:w-auto">
+                    <button onclick="downloadSingle1('${newSrc}', '${name}')" class="flex-1 md:flex-none px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all">下載</button>
+                    <button onclick="removeFile1(${index})" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                        <i class="fa-solid fa-trash-can text-base"></i>
+                    </button>
+                </div>
+            `;
+            document.getElementById('previewList1').appendChild(item);
+        }
+
+        window.downloadSingle1 = (url, originalName) => {
+            const link = document.createElement('a');
+            const name = originalName.substring(0, originalName.lastIndexOf('.')) || originalName;
+            link.download = `${name}_optimized.jpg`;
+            link.href = url;
+            link.click();
+        };
+
+        window.removeFile1 = (index) => {
+            filesArray1.splice(index, 1);
+            if (filesArray1.length === 0) {
+                document.getElementById('downloadAllBtn1').classList.add('hidden');
+            }
+            processAllFiles1();
+        };
+
+
+        // ==========================================
+        // TOOL 2 LOGIC: 剪貼快存助手
+        // ==========================================
+        let currentImage2 = null;
+        let currentRotation2 = 0;
+        let isFlipped2 = false;
+        let outputFormat2 = 'image/png';
+
+        function initCapScreen() {
+            const fileInput2 = document.getElementById('fileInput2');
+            const dropzone2 = document.getElementById('dropzone2');
+            const emptyState2 = document.getElementById('emptyState2');
+            const mainCanvas2 = document.getElementById('mainCanvas2');
+            const actionToolbar2 = document.getElementById('actionToolbar2');
+            const imgInfo2 = document.getElementById('imgInfo2');
+            const imgDimensions2 = document.getElementById('imgDimensions2');
+            const imgSize2 = document.getElementById('imgSize2');
+            
+            const formatPng2 = document.getElementById('formatPng2');
+            const formatJpg2 = document.getElementById('formatJpg2');
+            const qualitySection2 = document.getElementById('qualitySection2');
+            const qualityRange2 = document.getElementById('qualityRange2');
+            const qualityVal2 = document.getElementById('qualityVal2');
+            const fileName2 = document.getElementById('fileName2');
+            const fileExtHint2 = document.getElementById('fileExtHint2');
+
+            const watermarkText2 = document.getElementById('watermarkText2');
+            const watermarkColor2 = document.getElementById('watermarkColor2');
+            const watermarkPos2 = document.getElementById('watermarkPos2');
+
+            const btnRotate2 = document.getElementById('btnRotate2');
+            const btnFlip2 = document.getElementById('btnFlip2');
+            const btnClear2 = document.getElementById('btnClear2');
+            const btnCopy2 = document.getElementById('btnCopy2');
+            const btnDownload2 = document.getElementById('btnDownload2');
+
+            // 全域 Paste 偵測 (僅限當前分頁為 Capscreen 時觸發)
+            window.addEventListener('paste', function(e) {
+                if (currentTab !== 'capscreen') return;
+                const items = e.clipboardData.items;
+                let imageFound = false;
+
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        loadImageFromBlob2(blob);
+                        imageFound = true;
+                        showGlobalToast('已自剪貼簿載入貼上圖！');
+                        break;
+                    }
+                }
+                if (!imageFound) {
+                    showGlobalToast('剪貼簿中沒有合法的圖片資源。', false);
+                }
+            });
+
+            dropzone2.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropzone2.classList.add('drag-active');
+            });
+            dropzone2.addEventListener('dragleave', () => dropzone2.classList.remove('drag-active'));
+            dropzone2.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropzone2.classList.remove('drag-active');
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type.startsWith('image/')) {
+                    loadImageFromBlob2(files[0]);
+                    showGlobalToast('已載入拖放圖片！');
+                }
+            });
+
+            fileInput2.addEventListener('change', (e) => {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    loadImageFromBlob2(files[0]);
+                }
+            });
+
+            function loadImageFromBlob2(blob) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.onload = function() {
+                        currentImage2 = img;
+                        currentRotation2 = 0;
+                        isFlipped2 = false;
+
+                        if (blob.name) {
+                            fileName2.value = blob.name.substring(0, blob.name.lastIndexOf('.')) || blob.name;
+                        } else {
+                            const now = new Date();
+                            fileName2.value = `screenshot_${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+                        }
+
+                        renderCanvas2();
+                        emptyState2.classList.add('hidden');
+                        mainCanvas2.classList.remove('hidden');
+                        actionToolbar2.classList.remove('hidden');
+                        imgInfo2.classList.remove('hidden');
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(blob);
+            }
+
+            function renderCanvas2() {
+                if (!currentImage2) return;
+                const ctx = mainCanvas2.getContext('2d');
+
+                const isHorizontal = (currentRotation2 === 90 || currentRotation2 === 270);
+                const targetW = isHorizontal ? currentImage2.height : currentImage2.width;
+                const targetH = isHorizontal ? currentImage2.width : currentImage2.height;
+
+                mainCanvas2.width = targetW;
+                mainCanvas2.height = targetH;
+
+                ctx.clearRect(0, 0, targetW, targetH);
+                ctx.save();
+                ctx.translate(targetW / 2, targetH / 2);
+                ctx.rotate((currentRotation2 * Math.PI) / 180);
+
+                if (isFlipped2) {
+                    ctx.scale(-1, 1);
+                }
+
+                ctx.drawImage(currentImage2, -currentImage2.width / 2, -currentImage2.height / 2);
+                ctx.restore();
+
+                // 繪製浮水印
+                const wmVal = watermarkText2.value.trim();
+                if (wmVal) {
+                    ctx.save();
+                    const fontSize = Math.max(14, Math.floor(Math.min(targetW, targetH) * 0.035));
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    ctx.fillStyle = watermarkColor2.value;
+
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                    ctx.shadowBlur = 4;
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = 1;
+
+                    const textW = ctx.measureText(wmVal).width;
+                    const margin = fontSize;
+                    let tx = 0, ty = 0;
+
+                    const pos = watermarkPos2.value;
+                    if (pos === 'top-left') {
+                        tx = margin;
+                        ty = margin + fontSize;
+                    } else if (pos === 'top-right') {
+                        tx = targetW - textW - margin;
+                        ty = margin + fontSize;
+                    } else if (pos === 'bottom-left') {
+                        tx = margin;
+                        ty = targetH - margin;
+                    } else if (pos === 'bottom-right') {
+                        tx = targetW - textW - margin;
+                        ty = targetH - margin;
+                    }
+
+                    ctx.fillText(wmVal, tx, ty);
+                    ctx.restore();
+                }
+
+                imgDimensions2.textContent = `${targetW} x ${targetH} px`;
+                updateEstimatedSize2();
+            }
+
+            function updateEstimatedSize2() {
+                const quality = parseFloat(qualityRange2.value) / 100;
+                mainCanvas2.toBlob((blob) => {
+                    if (blob) {
+                        imgSize2.textContent = `${(blob.size / 1024).toFixed(1)} KB`;
+                    }
+                }, outputFormat2, quality);
+            }
+
+            btnRotate2.addEventListener('click', () => {
+                currentRotation2 = (currentRotation2 + 90) % 360;
+                renderCanvas2();
+            });
+
+            btnFlip2.addEventListener('click', () => {
+                isFlipped2 = !isFlipped2;
+                renderCanvas2();
+            });
+
+            btnClear2.addEventListener('click', () => {
+                currentImage2 = null;
+                currentRotation2 = 0;
+                isFlipped2 = false;
+                watermarkText2.value = '';
+                mainCanvas2.classList.add('hidden');
+                actionToolbar2.classList.add('hidden');
+                imgInfo2.classList.add('hidden');
+                emptyState2.classList.remove('hidden');
+                fileInput2.value = '';
+                showGlobalToast('已重置預覽狀態');
+            });
+
+            watermarkText2.addEventListener('input', renderCanvas2);
+            watermarkColor2.addEventListener('input', renderCanvas2);
+            watermarkPos2.addEventListener('change', renderCanvas2);
+
+            formatPng2.addEventListener('click', () => {
+                outputFormat2 = 'image/png';
+                fileExtHint2.textContent = '.png';
+                formatPng2.className = "py-2 px-3 rounded-lg border-2 border-indigo-600 bg-indigo-50 text-indigo-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all";
+                formatJpg2.className = "py-2 px-3 rounded-lg border-2 border-slate-200 text-slate-600 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all";
+                formatPng2.querySelector('span').className = "w-2 h-2 rounded-full bg-indigo-600";
+                formatJpg2.querySelector('span').className = "w-2 h-2 rounded-full bg-transparent border border-slate-400";
+                qualitySection2.classList.add('hidden');
+                renderCanvas2();
+            });
+
+            formatJpg2.addEventListener('click', () => {
+                outputFormat2 = 'image/jpeg';
+                fileExtHint2.textContent = '.jpg';
+                formatJpg2.className = "py-2 px-3 rounded-lg border-2 border-indigo-600 bg-indigo-50 text-indigo-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all";
+                formatPng2.className = "py-2 px-3 rounded-lg border-2 border-slate-200 text-slate-600 font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-slate-50 transition-all";
+                formatJpg2.querySelector('span').className = "w-2 h-2 rounded-full bg-indigo-600";
+                formatPng2.querySelector('span').className = "w-2 h-2 rounded-full bg-transparent border border-slate-400";
+                qualitySection2.classList.remove('hidden');
+                qualitySection2.classList.remove('opacity-0');
+                renderCanvas2();
+            });
+
+            qualityRange2.addEventListener('input', (e) => {
+                qualityVal2.textContent = `${e.target.value}%`;
+                updateEstimatedSize2();
+            });
+
+            btnDownload2.addEventListener('click', () => {
+                if (!currentImage2) return;
+                const quality = parseFloat(qualityRange2.value) / 100;
+                const ext = outputFormat2 === 'image/png' ? 'png' : 'jpg';
+                const name = (fileName2.value.trim() || 'screenshot') + '.' + ext;
+
+                mainCanvas2.toBlob((blob) => {
+                    if (!blob) return;
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = name;
+                    link.click();
+                    showGlobalToast(`下載成功為 ${name}！`);
+                }, outputFormat2, quality);
+            });
+
+            btnCopy2.addEventListener('click', () => {
+                if (!currentImage2) return;
+                const quality = parseFloat(qualityRange2.value) / 100;
+
+                mainCanvas2.toBlob((blob) => {
+                    if (!blob) return;
+                    try {
+                        const item = new ClipboardItem({ [blob.type]: blob });
+                        navigator.clipboard.write([item]).then(() => {
+                            showGlobalToast('已成功複製圖片至您的剪貼簿！');
+                        }).catch(() => {
+                            showGlobalToast('因安全性防護限制複製失敗，請右鍵複製或直接下載。', false);
+                        });
+                    } catch (e) {
+                        showGlobalToast('瀏覽器目前不支援此項特性複製，建議直接下載。', false);
+                    }
+                }, outputFormat2, quality);
+            });
+        }
+
+
+        // ==========================================
+        // TOOL 5 LOGIC: 截圖列印小工具 (PrintHelper)
+        // ==========================================
+        let currentImageUrl5 = '';
+
+        function initPrintHelper() {
+            const placeholder5 = document.getElementById('placeholder5');
+            const previewImage5 = document.getElementById('print-preview-image');
+            const actionButtons5 = document.getElementById('action-buttons5');
+            const errorMessage5 = document.getElementById('error-message5');
+            const errorText5 = document.getElementById('error-text5');
+
+            window.addEventListener('paste', function(e) {
+                if (currentTab !== 'print-helper') return;
+                const items = e.clipboardData.items;
+                let imageFound = false;
+
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type.indexOf('image') !== -1) {
+                        const blob = items[i].getAsFile();
+                        const url = URL.createObjectURL(blob);
+                        
+                        if (currentImageUrl5) URL.revokeObjectURL(currentImageUrl5);
+                        currentImageUrl5 = url;
+                        
+                        previewImage5.src = url;
+                        previewImage5.classList.remove('hidden');
+                        placeholder5.classList.add('hidden');
+                        actionButtons5.classList.remove('hidden');
+                        actionButtons5.classList.add('flex');
+                        errorMessage5.classList.add('hidden');
+                        
+                        imageFound = true;
+                        showGlobalToast('截圖已成功載入列印工作區！');
+                        break;
+                    }
+                }
+
+                if (!imageFound) {
+                    errorText5.textContent = '剪貼簿中沒有找到圖片，請確定您已經截圖 (Print Screen) 或複製了圖片檔案。';
+                    errorMessage5.classList.remove('hidden');
+                    errorMessage5.classList.add('flex');
+                }
+            });
+        }
+
+        window.clearImage5 = () => {
+            const placeholder5 = document.getElementById('placeholder5');
+            const previewImage5 = document.getElementById('print-preview-image');
+            const actionButtons5 = document.getElementById('action-buttons5');
+            const errorMessage5 = document.getElementById('error-message5');
+
+            if (currentImageUrl5) URL.revokeObjectURL(currentImageUrl5);
+            currentImageUrl5 = '';
+            previewImage5.src = '';
+            previewImage5.classList.add('hidden');
+            placeholder5.classList.remove('hidden');
+            actionButtons5.classList.add('hidden');
+            actionButtons5.classList.remove('flex');
+            errorMessage5.classList.add('hidden');
+            showGlobalToast('已清除列印預覽');
+        };
+
+        window.saveAsJPG5 = () => {
+            if (!currentImageUrl5) return;
+
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+                
+                const link = document.createElement('a');
+                link.download = `screenshot_${new Date().getTime()}.jpg`;
+                link.href = dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showGlobalToast('已儲存 JPG 至本地下載！');
+            };
+            img.src = currentImageUrl5;
+        };
+
+
+        // ==========================================
+        // TOOL 6 LOGIC: 智能繁簡轉換 (CCConverter)
+        // ==========================================
+        let isCCReady = false;
+        let ccConverters = { s2t: null, t2s: null };
+        let ccCurrentMode = 'auto';
+        let ccDebounceTimer;
+
+        function initCCConverter() {
+            const inputArea6 = document.getElementById('input-area6');
+            const outputArea6 = document.getElementById('output-area6');
+            const modeButtons6 = document.querySelectorAll('.mode-btn6');
+            const status6 = document.getElementById('status-indicator6');
+            const clearBtn6 = document.getElementById('clear-btn6');
+            const copyBtn6 = document.getElementById('copy-btn6');
+
+            function updateCCStatus(text, type = 'success') {
+                if (type === 'loading') {
+                    status6.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-indigo-500"></i> ${text}`;
+                } else if (type === 'error') {
+                    status6.innerHTML = `<span class="text-rose-500 font-bold"><i class="fa-solid fa-circle-xmark"></i> ${text}</span>`;
+                } else {
+                    status6.innerHTML = `<span class="text-emerald-600 font-bold flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${text}</span>`;
+                }
+            }
+
+            if (window.OpenCC) {
+                try {
+                    ccConverters.s2t = window.OpenCC.Converter({ from: 'cn', to: 'tw' });
+                    ccConverters.t2s = window.OpenCC.Converter({ from: 'tw', to: 'cn' });
+                    isCCReady = true;
+                    updateCCStatus('系統已就緒！');
+                } catch(e) {
+                    updateCCStatus('核心字庫載入異常', 'error');
+                }
+            } else {
+                updateCCStatus('未偵測到繁簡字庫模組', 'error');
+            }
+
+            function convertText6(text) {
+                if (!isCCReady) return;
+                if (!text.trim()) {
+                    outputArea6.value = '';
+                    updateCCStatus('系統已就緒！');
+                    updateCCUIState();
+                    return;
+                }
+
+                const { s2t, t2s } = ccConverters;
+
+                if (ccCurrentMode === 'to_tw') {
+                    outputArea6.value = s2t(text);
+                    updateCCStatus('強制轉換：已轉繁體 (TW)');
+                } else if (ccCurrentMode === 'to_cn') {
+                    outputArea6.value = t2s(text);
+                    updateCCStatus('強制轉換：已轉簡體 (CN)');
+                } else {
+                    const s2tText = s2t(text);
+                    if (s2tText !== text) {
+                        outputArea6.value = s2tText;
+                        updateCCStatus('智慧自動偵測：偵測到簡體 ➔ 已轉繁體 (TW)');
+                    } else {
+                        const t2sText = t2s(text);
+                        if (t2sText !== text) {
+                            outputArea6.value = t2sText;
+                            updateCCStatus('智慧自動偵測：偵測到繁體 ➔ 已轉簡體 (CN)');
+                        } else {
+                            outputArea6.value = text;
+                            updateCCStatus('智慧自動偵測：中性或相同，無須多餘轉換');
+                        }
+                    }
+                }
+                updateCCUIState();
+            }
+
+            function triggerCCConversion() {
+                clearTimeout(ccDebounceTimer);
+                ccDebounceTimer = setTimeout(() => {
+                    convertText6(inputArea6.value);
+                }, 100);
+            }
+
+            function updateCCUIState() {
+                const hasInput = inputArea6.value.length > 0;
+                const hasOutput = outputArea6.value.length > 0;
+
+                clearBtn6.disabled = !hasInput;
+                copyBtn6.disabled = !hasOutput;
+
+                if (hasOutput) {
+                    copyBtn6.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold shadow-md transition-all duration-200 text-xs bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 cursor-pointer";
+                } else {
+                    copyBtn6.className = "flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold shadow-sm transition-all duration-200 text-xs bg-slate-200 text-slate-400 cursor-not-allowed";
+                }
+            }
+
+            inputArea6.addEventListener('input', triggerCCConversion);
+
+            modeButtons6.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    modeButtons6.forEach(b => {
+                        b.className = "mode-btn6 flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all text-slate-500 hover:text-slate-800";
+                    });
+                    const clicked = e.currentTarget;
+                    clicked.className = "mode-btn6 active flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all bg-white text-indigo-600 shadow-sm";
+                    ccCurrentMode = clicked.dataset.mode;
+                    triggerCCConversion();
+                });
+            });
+
+            clearBtn6.addEventListener('click', () => {
+                inputArea6.value = '';
+                outputArea6.value = '';
+                triggerCCConversion();
+            });
+
+            copyBtn6.addEventListener('click', () => {
+                if (!outputArea6.value) return;
+                const txt = outputArea6.value;
+                
+                const tempText = document.createElement("textarea");
+                tempText.value = txt;
+                tempText.style.position = "fixed";
+                tempText.style.left = "-9999px";
+                document.body.appendChild(tempText);
+                tempText.select();
+                try {
+                    document.execCommand('copy');
+                    showGlobalToast('已複製繁簡轉換結果！');
+                } catch(e) {
+                    showGlobalToast('複製失敗，請手動複製', false);
+                }
+                tempText.remove();
+            });
+        }
+
+
+        // ==========================================
+        // TOOL 3 LOGIC: 重複檔案清理 (DupCleaner)
+        // ==========================================
+        let loadedFiles3 = [];
+        let duplicateGroups3 = {};
+        let selectedPaths3 = new Set();
+        let statsChart3 = null;
+        let isDirectSupported3 = ('showDirectoryPicker' in window);
+        let directMode3 = false;
+        let dirHandle3 = null;
+        let fileHandlesMap3 = new Map();
+
+        function initDupCleaner() {
+            const dropZone3 = document.getElementById('dropZone3');
+            const fileInput3 = document.getElementById('fileInput3');
+            const btnDirectFolder3 = document.getElementById('btnDirectFolder3');
+            const btnSelectFolder3 = document.getElementById('btnSelectFolder3');
+            const btnSelectFiles3 = document.getElementById('btnSelectFiles3');
+            const btnStartScan3 = document.getElementById('btnStartScan3');
+            const btnToggleFilters3 = document.getElementById('btnToggleFilters3');
+            const filterPanel3 = document.getElementById('filterPanel3');
+            const btnHelp3 = document.getElementById('btnHelp3');
+
+            const btnSmartSelect3 = document.getElementById('btnSmartSelect3');
+            const smartSelectMenu3 = document.getElementById('smartSelectMenu3');
+            const btnActionExecute3 = document.getElementById('btnActionExecute3');
+            const btnConfirmDirectDelete3 = document.getElementById('btnConfirmDirectDelete3');
+
+            // 支援判定
+            if (!isDirectSupported3) {
+                btnDirectFolder3.classList.add('hidden');
+                document.getElementById('api-warning4').classList.remove('hidden'); // 分享給 Tool 4 的相容性警示
+            }
+
+            btnHelp3.addEventListener('click', () => openModal(document.getElementById('helpModal3')));
+            btnToggleFilters3.addEventListener('click', () => filterPanel3.classList.toggle('hidden'));
+
+            btnDirectFolder3.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    dirHandle3 = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    const permission = await dirHandle3.requestPermission({ mode: 'readwrite' });
+                    if (permission !== 'granted') {
+                        showGlobalToast('未授予本機編輯權限，已使用唯讀存取模式。', false);
+                        return;
+                    }
+
+                    directMode3 = true;
+                    loadedFiles3 = [];
+                    fileHandlesMap3.clear();
+
+                    updateProgress3(10, '讀取結構目錄...', '正在遞迴分析檔案樹，請稍候...');
+                    document.getElementById('progressCard3').classList.remove('hidden');
+
+                    await scanDir3(dirHandle3, "");
+
+                    document.getElementById('progressCard3').classList.add('hidden');
+                    handleImportSuccess3();
+                } catch (err) {
+                    document.getElementById('progressCard3').classList.add('hidden');
+                }
+            });
+
+            btnSelectFolder3.addEventListener('click', (e) => {
+                e.stopPropagation();
+                directMode3 = false;
+                fileInput3.removeAttribute('multiple');
+                fileInput3.setAttribute('webkitdirectory', '');
+                fileInput3.click();
+            });
+
+            btnSelectFiles3.addEventListener('click', (e) => {
+                e.stopPropagation();
+                directMode3 = false;
+                fileInput3.removeAttribute('webkitdirectory');
+                fileInput3.setAttribute('multiple', '');
+                fileInput3.click();
+            });
+
+            dropZone3.addEventListener('click', () => {
+                if (isDirectSupported3) btnDirectFolder3.click();
+                else btnSelectFolder3.click();
+            });
+
+            fileInput3.addEventListener('change', (e) => {
+                directMode3 = false;
+                loadedFiles3 = Array.from(e.target.files);
+                handleImportSuccess3();
+            });
+
+            btnStartScan3.addEventListener('click', startScan3);
+
+            btnSmartSelect3.addEventListener('click', (e) => {
+                e.stopPropagation();
+                smartSelectMenu3.classList.toggle('hidden');
+            });
+
+            document.addEventListener('click', () => smartSelectMenu3.classList.add('hidden'));
+
+            smartSelectMenu3.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const mode = btn.getAttribute('data-select');
+                    executeSmartSelect3(mode);
+                });
+            });
+
+            btnActionExecute3.addEventListener('click', () => {
+                if (selectedPaths3.size === 0) return;
+                if (directMode3) {
+                    document.getElementById('directDeleteCount3').textContent = selectedPaths3.size;
+                    openModal(document.getElementById('directDeleteConfirmModal3'));
+                } else {
+                    openModal(document.getElementById('cleanupModal3'));
+                }
+            });
+
+            btnConfirmDirectDelete3.addEventListener('click', executeDirectDelete3);
+
+            // Zip 降級備用打包與腳本導出
+            document.getElementById('btnDownloadZip3').addEventListener('click', executeZipPack3);
+            document.getElementById('btnGenCmdWin3').addEventListener('click', () => generateScript3('win'));
+            document.getElementById('btnGenCmdMac3').addEventListener('click', () => generateScript3('mac'));
+            document.getElementById('btnCopyScript3').addEventListener('click', () => {
+                const area = document.getElementById('txtScriptArea3');
+                area.select();
+                document.execCommand('copy');
+                showGlobalToast('已成功複製指令至您的剪貼簿！');
+            });
+        }
+
+        async function scanDir3(handle, path) {
+            for await (const entry of handle.values()) {
+                const currPath = path ? `${path}/${entry.name}` : entry.name;
+                if (entry.kind === 'file') {
+                    const file = await entry.getFile();
+                    Object.defineProperty(file, 'webkitRelativePath', {
+                        value: currPath,
+                        writable: true,
+                        configurable: true
+                    });
+                    loadedFiles3.push(file);
+                    fileHandlesMap3.set(currPath, {
+                        handle: entry,
+                        parentHandle: handle,
+                        name: entry.name
+                    });
+                } else if (entry.kind === 'directory') {
+                    await scanDir3(entry, currPath);
+                }
+            }
+        }
+
+        function handleImportSuccess3() {
+            if (loadedFiles3.length === 0) return;
+            const btn = document.getElementById('btnStartScan3');
+            btn.removeAttribute('disabled');
+            btn.className = "w-full mt-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg shadow-sm cursor-pointer transition-all flex items-center justify-center gap-2 text-sm";
+            dropZone3.querySelector('p').innerHTML = `成功分析 <span class="text-indigo-600 font-bold">${loadedFiles3.length}</span> 個本機檔案！`;
+        }
+
+        function updateProgress3(percent, title, detail) {
+            document.getElementById('progressTitle3').textContent = title;
+            document.getElementById('progressPercent3').textContent = `${percent}%`;
+            document.getElementById('progressBar3').style.width = `${percent}%`;
+            document.getElementById('progressDetail3').textContent = detail;
+        }
+
+        async function startScan3() {
+            const card = document.getElementById('progressCard3');
+            card.classList.remove('hidden');
+            selectedPaths3.clear();
+
+            const mode = document.querySelector('input[name="compareMode3"]:checked').value;
+            const minSize = parseInt(document.getElementById('minSizeFilter3').value);
+            const extFilter = document.getElementById('extFilter3').value.split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+
+            let filtered = loadedFiles3.filter(f => {
+                if (f.size < minSize) return false;
+                if (extFilter.length > 0) {
+                    const ext = f.name.split('.').pop().toLowerCase();
+                    if (!extFilter.includes(ext)) return false;
+                }
+                return true;
+            });
+
+            if (filtered.length === 0) {
+                updateProgress3(100, '分析結束', '未尋找到符合篩選條件的檔案');
+                setTimeout(() => card.classList.add('hidden'), 1000);
+                return;
+            }
+
+            duplicateGroups3 = {};
+
+            if (mode === 'fast') {
+                updateProgress3(50, '快速索引建立...', '正在根據名稱與大小判定衝突快照...');
+                await new Promise(r => setTimeout(r, 400));
+                
+                const groups = {};
+                filtered.forEach(f => {
+                    const key = `${f.name}_${f.size}`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(f);
+                });
+
+                Object.keys(groups).forEach(k => {
+                    if (groups[k].length > 1) duplicateGroups3[k] = groups[k];
+                });
+            } else {
+                updateProgress3(20, '資料分組...', '提取等容量檔案進行深度比對...');
+                await new Promise(r => setTimeout(r, 200));
+
+                const sizeGroups = {};
+                filtered.forEach(f => {
+                    if (!sizeGroups[f.size]) sizeGroups[f.size] = [];
+                    sizeGroups[f.size].push(f);
+                });
+
+                let candidates = [];
+                Object.keys(sizeGroups).forEach(sz => {
+                    if (sizeGroups[sz].length > 1) candidates = candidates.concat(sizeGroups[sz]);
+                });
+
+                const total = candidates.length;
+                const hashGroups = {};
+
+                for (let i = 0; i < total; i++) {
+                    const f = candidates[i];
+                    const percent = Math.round((i / total) * 70) + 20;
+                    updateProgress3(percent, '深度雜湊解析中...', `計算特徵碼：${f.name}`);
+                    try {
+                        const hash = await calculateSHA256(f);
+                        if (!hashGroups[hash]) hashGroups[hash] = [];
+                        hashGroups[hash].push(f);
+                    } catch(e){}
+                }
+
+                Object.keys(hashGroups).forEach(h => {
+                    if (hashGroups[h].length > 1) duplicateGroups3[h] = hashGroups[h];
+                });
+            }
+
+            updateProgress3(100, '分析完成', '開始渲染比對面板...');
+            setTimeout(() => {
+                card.classList.add('hidden');
+                renderResults3();
+            }, 500);
+        }
+
+        async function calculateSHA256(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const hashBuffer = await crypto.subtle.digest('SHA-256', e.target.result);
+                        const hex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+                        resolve(hex);
+                    } catch(err){ reject(err); }
+                };
+                reader.onerror = reject;
+                
+                // 大檔案加速分塊
+                const LIMIT = 5 * 1024 * 1024;
+                if (file.size > LIMIT * 3) {
+                    const chunk1 = file.slice(0, LIMIT);
+                    const chunk2 = file.slice(Math.floor(file.size/2) - LIMIT/2, Math.floor(file.size/2) + LIMIT/2);
+                    const chunk3 = file.slice(file.size - LIMIT, file.size);
+                    reader.readAsArrayBuffer(new Blob([chunk1, chunk2, chunk3]));
+                } else {
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+        }
+
+        function renderResults3() {
+            const container = document.getElementById('resultsContainer3');
+            container.innerHTML = '';
+            const keys = Object.keys(duplicateGroups3);
+
+            if (keys.length === 0) {
+                document.getElementById('emptyState3').classList.remove('hidden');
+                document.getElementById('actionToolbar3').classList.add('hidden');
+                document.getElementById('resultsFooter3').classList.add('hidden');
+                document.getElementById('statsCard3').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('emptyState3').classList.add('hidden');
+            container.classList.remove('hidden');
+            document.getElementById('actionToolbar3').classList.remove('hidden');
+            document.getElementById('resultsFooter3').classList.remove('hidden');
+
+            const btnAction = document.getElementById('btnActionExecute3');
+            const iconAction = document.getElementById('actionBtnIcon3');
+            const txtAction = document.getElementById('actionBtnText3');
+
+            if (directMode3) {
+                iconAction.className = "fa-solid fa-dumpster-fire";
+                txtAction.textContent = "立即永久刪除已選";
+                btnAction.className = "inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-lg text-white bg-rose-600 hover:bg-rose-700 shadow-md gap-1.5 transition-all cursor-pointer";
+                document.getElementById('footerNotice3').innerHTML = `<span class="text-rose-600 font-bold"><i class="fa-solid fa-bolt"></i> 本機直接刪除模式：</span> 刪除後不經過回收筒，空間立即釋放。`;
+            } else {
+                iconAction.className = "fa-solid fa-wand-magic-sparkles";
+                txtAction.textContent = "展開唯讀清理方案";
+                btnAction.className = "inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 shadow-md gap-1.5 transition-all cursor-pointer";
+                document.getElementById('footerNotice3').innerHTML = `<span class="text-indigo-600 font-bold"><i class="fa-solid fa-info-circle"></i> 唯讀相容模式：</span> 改名完成後，我們將為您打包保留檔或輸出刪除腳本。`;
+            }
+
+            let waste = 0;
+            let idx = 0;
+
+            keys.forEach(k => {
+                const files = duplicateGroups3[k];
+                const first = files[0];
+                waste += (files.length - 1) * first.size;
+
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm";
+                card.innerHTML = `
+                    <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between font-semibold text-slate-700">
+                        <span>重複群組 #${idx + 1} (${files[0].name})</span>
+                        <span>大小: <span class="text-indigo-600">${formatBytes(first.size)}</span></span>
+                    </div>
+                    <div class="divide-y divide-slate-100" id="dup-rows-${idx}"></div>
+                `;
+                container.appendChild(card);
+
+                const list = document.getElementById(`dup-rows-${idx}`);
+                files.forEach(f => {
+                    const relPath = f.webkitRelativePath || f.name;
+                    const pathId = `${k}::${relPath}::${f.lastModified}`;
+
+                    const row = document.createElement('div');
+                    row.className = "p-3 flex items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors";
+                    row.innerHTML = `
+                        <div class="flex items-center gap-3 min-w-0 flex-grow">
+                            <input type="checkbox" data-path="${pathId}" class="dup-checkbox h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer">
+                            <i class="${getFileIconClass3(f.name)} text-xl"></i>
+                            <div class="min-w-0 flex-grow">
+                                <p class="font-bold text-slate-800 truncate" title="${f.name}">${f.name}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5 truncate">目錄: ${relPath}</p>
+                            </div>
+                        </div>
+                        <button class="p-1 text-slate-400 hover:text-indigo-600 preview-file-btn"><i class="fa-regular fa-eye"></i></button>
+                    `;
+
+                    row.querySelector('.dup-checkbox').addEventListener('change', (e) => {
+                        if (e.target.checked) selectedPaths3.add(pathId);
+                        else selectedPaths3.delete(pathId);
+                        updateToolbarStatus3();
+                    });
+
+                    row.querySelector('.preview-file-btn').addEventListener('click', () => openFilePreview3(f));
+
+                    list.appendChild(row);
+                });
+                idx++;
+            });
+
+            document.getElementById('statWasteSize3').textContent = formatBytes(waste);
+            document.getElementById('statGroups3').textContent = `${keys.length} 組`;
+            document.getElementById('statTotalFiles3').textContent = `${loadedFiles3.length} 個`;
+            document.getElementById('statsCard3').classList.remove('hidden');
+
+            renderChart3(waste);
+            executeSmartSelect3('all-but-one');
+        }
+
+        function executeSmartSelect3(mode) {
+            selectedPaths3.clear();
+            Object.keys(duplicateGroups3).forEach(k => {
+                const files = duplicateGroups3[k];
+                if (mode === 'clear') return;
+
+                if (mode === 'all-but-one') {
+                    files.slice(1).forEach(f => {
+                        const pathId = `${k}::${f.webkitRelativePath || f.name}::${f.lastModified}`;
+                        selectedPaths3.add(pathId);
+                    });
+                } else if (mode === 'newest') {
+                    let newest = files[0];
+                    files.forEach(f => { if (f.lastModified > newest.lastModified) newest = f; });
+                    files.forEach(f => {
+                        if (f !== newest) {
+                            const pathId = `${k}::${f.webkitRelativePath || f.name}::${f.lastModified}`;
+                            selectedPaths3.add(pathId);
+                        }
+                    });
+                } else if (mode === 'oldest') {
+                    let oldest = files[0];
+                    files.forEach(f => { if (f.lastModified < oldest.lastModified) oldest = f; });
+                    files.forEach(f => {
+                        if (f !== oldest) {
+                            const pathId = `${k}::${f.webkitRelativePath || f.name}::${f.lastModified}`;
+                            selectedPaths3.add(pathId);
+                        }
+                    });
+                }
+            });
+
+            document.querySelectorAll('.dup-checkbox').forEach(chk => {
+                const path = chk.getAttribute('data-path');
+                chk.checked = selectedPaths3.has(path);
+            });
+            updateToolbarStatus3();
+        }
+
+        function updateToolbarStatus3() {
+            document.getElementById('selectedCount3').textContent = selectedPaths3.size;
+            const btn = document.getElementById('btnActionExecute3');
+            if (selectedPaths3.size > 0) {
+                btn.removeAttribute('disabled');
+                btn.className = "inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-md gap-1.5 transition-all cursor-pointer";
+                if (directMode3) btn.classList.replace('bg-indigo-600', 'bg-rose-600');
+            } else {
+                btn.setAttribute('disabled', 'true');
+                btn.className = "inline-flex items-center px-4 py-2 border border-transparent text-xs font-bold rounded-lg text-white bg-slate-200 shadow-sm gap-1.5 cursor-not-allowed";
+            }
+        }
+
+        async function executeDirectDelete3() {
+            closeModal(document.getElementById('directDeleteConfirmModal3'));
+            const card = document.getElementById('progressCard3');
+            card.classList.remove('hidden');
+
+            let count = 0;
+            const arr = Array.from(selectedPaths3);
+            for (let i = 0; i < arr.length; i++) {
+                const pathId = arr[i];
+                const parts = pathId.split('::');
+                const relPath = parts[1];
+
+                updateProgress3(Math.round((i / arr.length)*100), '移除本機重複實體檔...', relPath);
+                const meta = fileHandlesMap3.get(relPath);
+                if (meta) {
+                    try {
+                        await meta.parentHandle.removeEntry(meta.name);
+                        loadedFiles3 = loadedFiles3.filter(f => (f.webkitRelativePath || f.name) !== relPath);
+                        count++;
+                    } catch(err){}
+                }
+            }
+
+            card.classList.add('hidden');
+            showGlobalToast(`成功實體刪除 ${count} 個重複檔案！`);
+            selectedPaths3.clear();
+            startScan3();
+        }
+
+        async function executeZipPack3() {
+            const btn = document.getElementById('btnDownloadZip3');
+            btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> 打包壓縮中...`;
+            btn.setAttribute('disabled', 'true');
+
+            try {
+                const zip = new JSZip();
+                let count = 0;
+                Object.keys(duplicateGroups3).forEach(k => {
+                    const files = duplicateGroups3[k];
+                    files.forEach(f => {
+                        const relPath = f.webkitRelativePath || f.name;
+                        const id = `${k}::${relPath}::${f.lastModified}`;
+                        if (!selectedPaths3.has(id)) {
+                            zip.file(relPath, f);
+                            count++;
+                        }
+                    });
+                });
+
+                if (count === 0) {
+                    showGlobalToast('未勾選任何保留打包下載的檔案！', false);
+                    return;
+                }
+
+                const content = await zip.generateAsync({ type: 'blob' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "Cleaned_Archive.zip";
+                link.click();
+                showGlobalToast('唯一保留檔打包完成並下載！');
+            } catch(e) {} finally {
+                btn.innerHTML = '開始打包下載 (Zip)';
+                btn.removeAttribute('disabled');
+            }
+        }
+
+        function generateScript3(platform) {
+            document.getElementById('scriptContainer3').classList.remove('hidden');
+            const area = document.getElementById('txtScriptArea3');
+            let txt = "";
+
+            if (platform === 'win') {
+                txt = `@echo off\nchcp 65001\necho 正在刪除重複檔案...\n`;
+                selectedPaths3.forEach(id => {
+                    const rel = id.split('::')[1].replace(/\//g, '\\');
+                    txt += `del /q /f "${rel}"\n`;
+                });
+                txt += `echo 完成!\npause`;
+            } else {
+                txt = `#!/bin/bash\necho "刪除本機重複檔案..."\n`;
+                selectedPaths3.forEach(id => {
+                    const rel = id.split('::')[1];
+                    txt += `rm -f "${rel}"\n`;
+                });
+                txt += `echo "完成!"`;
+            }
+            area.value = txt;
+        }
+
+        function openFilePreview3(file) {
+            const title = document.getElementById('previewTitle3');
+            const meta = document.getElementById('previewMeta3');
+            const content = document.getElementById('previewContent3');
+
+            title.textContent = `檔案預覽: ${file.name}`;
+            meta.textContent = `容量: ${formatBytes(file.size)} | 格式: ${file.type || '未知'}`;
+            content.innerHTML = '';
+
+            const type = file.type || '';
+            if (type.startsWith('image/')) {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = "max-w-full max-h-[50vh] object-contain rounded-lg";
+                content.appendChild(img);
+            } else if (type.startsWith('audio/')) {
+                const aud = document.createElement('audio');
+                aud.src = URL.createObjectURL(file);
+                aud.controls = true;
+                content.appendChild(aud);
+            } else if (type.startsWith('video/')) {
+                const vid = document.createElement('video');
+                vid.src = URL.createObjectURL(file);
+                vid.controls = true;
+                vid.className = "max-w-full max-h-[50vh] rounded-lg";
+                content.appendChild(vid);
+            } else {
+                content.innerHTML = `<p class="text-slate-400">本類型目前不支援直接線上網頁預覽。</p>`;
+            }
+            openModal(document.getElementById('previewModal3'));
+        }
+
+        function renderChart3(wasteSize) {
+            const ctx = document.getElementById('statsChart3').getContext('2d');
+            if (statsChart3) statsChart3.destroy();
+
+            const totalSize = loadedFiles3.reduce((acc, f) => acc + f.size, 0);
+            const activeSize = Math.max(0, totalSize - wasteSize);
+
+            statsChart3 = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['可回收空間', '健康資料佔用'],
+                    datasets: [{
+                        data: [wasteSize, activeSize],
+                        backgroundColor: ['#f43f5e', '#6366f1'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        function getFileIconClass3(name) {
+            const ext = name.split('.').pop().toLowerCase();
+            if (['jpg','jpeg','png','webp','gif'].includes(ext)) return 'fa-regular fa-file-image text-emerald-500';
+            if (['mp4','mov','avi','mkv'].includes(ext)) return 'fa-regular fa-file-video text-rose-500';
+            if (['mp3','wav','flac'].includes(ext)) return 'fa-regular fa-file-audio text-amber-500';
+            if (['zip','7z','rar'].includes(ext)) return 'fa-regular fa-file-zipper text-purple-500';
+            return 'fa-regular fa-file text-slate-400';
+        }
+
+
+        // ==========================================
+        // TOOL 4 LOGIC: 批量檔案改名 (BulkRename)
+        // ==========================================
+        let renameMode4 = 'direct';
+        let loadedFiles4 = [];
+        let dirHandle4 = null;
+
+        function initBulkRename() {
+            const btnDirect = document.getElementById('btn-mode-direct4');
+            const btnZip = document.getElementById('btn-mode-zip4');
+            const selectDirBtn = document.getElementById('btnSelectDir4');
+            const fileInput = document.getElementById('file-input4');
+            const previewList = document.getElementById('preview-list4');
+
+            btnDirect.addEventListener('click', () => switchRenameMode4('direct'));
+            btnZip.addEventListener('click', () => switchRenameMode4('zip'));
+
+            selectDirBtn.addEventListener('click', async () => {
+                try {
+                    dirHandle4 = await window.showDirectoryPicker({ mode: 'readwrite' });
+                    document.getElementById('selected-dir-name4').textContent = dirHandle4.name;
+                    document.getElementById('selected-dir-info4').classList.remove('hidden');
+
+                    const files = [];
+                    for await (const entry of dirHandle4.values()) {
+                        if (entry.kind === 'file') {
+                            const f = await entry.getFile();
+                            files.push({ name: f.name, handle: entry, raw: f });
+                        }
+                    }
+
+                    files.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                    loadedFiles4 = files;
+                    handleImportSuccess4();
+                } catch(e) {}
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                files.sort((a,b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                loadedFiles4 = files.map(f => ({ name: f.name, handle: null, raw: f }));
+                handleImportSuccess4();
+            });
+
+            // 綁定所有規則的實時監聽
+            const inputRules = ['rule-replace-enable4','rule-replace-find4','rule-replace-with4','rule-affix-enable4','rule-prefix4','rule-suffix4','rule-sequence-enable4','rule-seq-base4','rule-seq-digits4','rule-seq-start4','rule-case-enable4','rule-case-type4','rule-ext-change4'];
+            inputRules.forEach(id => {
+                const el = document.getElementById(id);
+                if (el.type === 'checkbox') {
+                    el.addEventListener('change', () => {
+                        if (id === 'rule-sequence-enable4') toggleSeqInputs4();
+                        updateRenamePreview4();
+                    });
+                } else {
+                    el.addEventListener('input', updateRenamePreview4);
+                    el.addEventListener('change', updateRenamePreview4);
+                }
+            });
+
+            document.getElementById('btn-execute4').addEventListener('click', executeRenameAll4);
+            document.getElementById('btnClearDir4').addEventListener('click', clearRenameFiles4);
+            document.getElementById('btnClearAll4').addEventListener('click', clearRenameFiles4);
+            document.getElementById('btnCloseLog4').addEventListener('click', () => document.getElementById('log-panel4').classList.add('hidden'));
+        }
+
+        function switchRenameMode4(mode) {
+            renameMode4 = mode;
+            clearRenameFiles4();
+            const btnDirect = document.getElementById('btn-mode-direct4');
+            const btnZip = document.getElementById('btn-mode-zip4');
+            const pDirect = document.getElementById('mode-direct-panel4');
+            const pZip = document.getElementById('mode-zip-panel4');
+            const btnExecText = document.getElementById('btn-execute-text4');
+
+            if (mode === 'direct') {
+                btnDirect.className = "py-1.5 px-2 rounded-md text-center bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-1";
+                btnZip.className = "py-1.5 px-2 rounded-md text-center text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1";
+                pDirect.classList.remove('hidden');
+                pZip.classList.add('hidden');
+                btnExecText.textContent = "開始直接本機批量改名";
+            } else {
+                btnZip.className = "py-1.5 px-2 rounded-md text-center bg-white text-indigo-700 shadow-sm flex items-center justify-center gap-1";
+                btnDirect.className = "py-1.5 px-2 rounded-md text-center text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1";
+                pZip.classList.remove('hidden');
+                pDirect.classList.add('hidden');
+                btnExecText.textContent = "打包並下載改名 ZIP";
+            }
+        }
+
+        function toggleSeqInputs4() {
+            const active = document.getElementById('rule-sequence-enable4').checked;
+            const target = document.getElementById('sequence-inputs4');
+            if (active) target.classList.remove('opacity-40', 'pointer-events-none');
+            else target.classList.add('opacity-40', 'pointer-events-none');
+        }
+
+        function handleImportSuccess4() {
+            document.getElementById('file-count-badge4').textContent = `${loadedFiles4.length} 個`;
+            document.getElementById('preview-empty-state4').classList.add('hidden');
+            document.getElementById('preview-list4').classList.remove('hidden');
+            document.getElementById('btn-execute4').removeAttribute('disabled');
+            updateRenamePreview4();
+        }
+
+        function calculateNewName4(original, index) {
+            const dot = original.lastIndexOf('.');
+            let base = dot !== -1 ? original.slice(0, dot) : original;
+            let ext = dot !== -1 ? original.slice(dot) : '';
+
+            // 1. 全置換流水號
+            if (document.getElementById('rule-sequence-enable4').checked) {
+                const baseName = document.getElementById('rule-seq-base4').value || '';
+                const digits = parseInt(document.getElementById('rule-seq-digits4').value);
+                const start = parseInt(document.getElementById('rule-seq-start4').value) || 1;
+                const formattedNum = String(start + index).padStart(digits, '0');
+                base = baseName ? `${baseName}_${formattedNum}` : formattedNum;
+            }
+
+            // 2. 尋找與取代
+            if (document.getElementById('rule-replace-enable4').checked && !document.getElementById('rule-sequence-enable4').checked) {
+                const find = document.getElementById('rule-replace-find4').value;
+                const replace = document.getElementById('rule-replace-with4').value || '';
+                if (find) {
+                    const regex = new RegExp(find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                    base = base.replace(regex, replace);
+                }
+            }
+
+            // 3. 字首與字尾
+            if (document.getElementById('rule-affix-enable4').checked) {
+                const pre = document.getElementById('rule-prefix4').value || '';
+                const suf = document.getElementById('rule-suffix4').value || '';
+                base = `${pre}${base}${suf}`;
+            }
+
+            // 4. 大小寫轉換
+            if (document.getElementById('rule-case-enable4').checked) {
+                const type = document.getElementById('rule-case-type4').value;
+                if (type === 'lower') { base = base.toLowerCase(); ext = ext.toLowerCase(); }
+                else if (type === 'upper') { base = base.toUpperCase(); ext = ext.toUpperCase(); }
+                else if (type === 'capitalize') { base = base.charAt(0).toUpperCase() + base.slice(1).toLowerCase(); }
+
+                const forceExt = document.getElementById('rule-ext-change4').value.trim();
+                if (forceExt) ext = forceExt.startsWith('.') ? forceExt : `.` + forceExt;
+            }
+
+            return `${base}${ext}`;
+        }
+
+        function updateRenamePreview4() {
+            if (loadedFiles4.length === 0) return;
+            const container = document.getElementById('preview-list4');
+            container.innerHTML = '';
+
+            const nameMap = new Map();
+            loadedFiles4.forEach((f, idx) => {
+                const newName = calculateNewName4(f.name, idx);
+                nameMap.set(newName, (nameMap.get(newName) || 0) + 1);
+            });
+
+            loadedFiles4.forEach((f, idx) => {
+                const newName = calculateNewName4(f.name, idx);
+                const same = f.name === newName;
+                const conflict = nameMap.get(newName) > 1;
+
+                const row = document.createElement('div');
+                row.className = "grid grid-cols-12 gap-4 px-4 py-2 text-xs items-center hover:bg-slate-50";
+                row.innerHTML = `
+                    <div class="col-span-1 text-slate-400 font-semibold">${idx + 1}</div>
+                    <div class="col-span-5 truncate text-slate-600" title="${f.name}">${f.name}</div>
+                    <div class="col-span-1 flex justify-center text-slate-300"><i class="fa-solid fa-angles-right text-[10px]"></i></div>
+                    <div class="col-span-5 truncate flex items-center justify-between">
+                        <span class="font-bold ${same ? 'text-slate-400' : 'text-indigo-600'} ${conflict ? 'text-rose-500 line-through' : ''}">${newName}</span>
+                        <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${conflict ? 'bg-rose-50 text-rose-600' : (same ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600')}">${conflict ? '衝突' : (same ? '無更動' : '就緒')}</span>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addLog4(text, type = 'info') {
+            document.getElementById('log-panel4').classList.remove('hidden');
+            const out = document.getElementById('log-output4');
+            const line = document.createElement('div');
+            
+            if (type === 'success') line.className = "text-emerald-400 font-bold";
+            else if (type === 'error') line.className = "text-rose-400 font-bold";
+            else line.className = "text-slate-300";
+
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+            out.appendChild(line);
+            out.scrollTop = out.scrollHeight;
+        }
+
+        async function executeRenameAll4() {
+            if (loadedFiles4.length === 0) return;
+            const list = loadedFiles4.map((f, idx) => calculateNewName4(f.name, idx));
+            const hasConflict = list.some((item, idx) => list.indexOf(item) !== idx);
+
+            if (hasConflict) {
+                showGlobalToast('命名規則產生衝突，請重置後再試！', false);
+                return;
+            }
+
+            addLog4('批量命名進程已展開...');
+            const btn = document.getElementById('btn-execute4');
+            btn.setAttribute('disabled', 'true');
+
+            if (renameMode4 === 'direct') {
+                let success = 0, fail = 0;
+                for (let i = 0; i < loadedFiles4.length; i++) {
+                    const fileObj = loadedFiles4[i];
+                    const newName = calculateNewName4(fileObj.name, i);
+                    if (fileObj.name === newName) { success++; continue; }
+
+                    try {
+                        // 本機目錄下直接改名寫入 (核心 File System Access API)
+                        await fileObj.handle.move(newName);
+                        addLog4(`命名成功: ${fileObj.name} ➜ ${newName}`, 'success');
+                        success++;
+                    } catch(err) {
+                        addLog4(`命名失敗: ${fileObj.name}，原因: ${err.message}`, 'error');
+                        fail++;
+                    }
+                }
+                showGlobalToast(`改名任務結束！成功 ${success}，失敗 ${fail}`);
+                clearRenameFiles4();
+            } else {
+                // ZIP 打包匯出命名檔案
+                try {
+                    const zip = new JSZip();
+                    loadedFiles4.forEach((f, idx) => {
+                        const newName = calculateNewName4(f.name, idx);
+                        zip.file(newName, f.raw);
+                    });
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = `批量改名打包匯出.zip`;
+                    link.click();
+                    showGlobalToast('改名打包下載完成！');
+                    clearRenameFiles4();
+                } catch(err) {}
+            }
+            btn.removeAttribute('disabled');
+        }
+
+        function clearRenameFiles4() {
+            loadedFiles4 = [];
+            dirHandle4 = null;
+            document.getElementById('selected-dir-info4').classList.add('hidden');
+            document.getElementById('preview-empty-state4').classList.remove('hidden');
+            document.getElementById('preview-list4').classList.add('hidden');
+            document.getElementById('file-count-badge4').textContent = "0 個";
+            document.getElementById('btn-execute4').setAttribute('disabled', 'true');
+            document.getElementById('log-output4').innerHTML = '';
+            document.getElementById('log-panel4').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
